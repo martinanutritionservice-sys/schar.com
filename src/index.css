@@ -1,0 +1,1151 @@
+:root {
+  --schar-red: #cf003e;
+  --schar-red-dark: #a60032;
+  --schar-yellow: #fec900;
+  --schar-yellow-dark: #d9ac00;
+  --cream: #f7f1ea;
+  --dark: #3d2b30;
+  --gray-border: #dbc8b7;
+  --green: #60813f;
+  --font-principal: 'Nunito Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-titulos: 'Playfair Display', 'Times New Roman', Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-principal);
+  background: #dbc8b7;
+  color: var(--dark);
+}
+
+/* #root (no body) es quien centra el marco: #root ya ocupa el 100% del
+   alto de la ventana (arriba), así que centrar ACÁ, en el elemento que
+   realmente tiene ese alto de sobra, es lo que deja el marco en el medio
+   en vez de pegado arriba. */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --- Marco de "celular" para simular la experiencia mobile del mockup ---
+   Ancho Y alto SIEMPRE fijos por dentro (390x844, las medidas de un
+   iPhone estándar): nada adentro se reacomoda ni cambia de tamaño nunca,
+   así el diseño queda siempre exactamente igual y alineado. Lo que sí
+   cambia según la ventana es la ESCALA visual completa del marco
+   (calculada en JS por useEscalaPantalla.js y aplicada acá como
+   transform), para que el marco entre siempre entero -bordes incluidos-
+   sin recortarse, sea la ventana chica, grande, angosta o alta. #root
+   ya lo centra (arriba), y como el transform escala desde el centro, se
+   mantiene centrado a cualquier escala. */
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  flex-shrink: 0;
+  background: var(--cream);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border-radius: 32px;
+  border: 10px solid var(--dark);
+  position: relative;
+}
+
+.phone-screen {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 22px;
+  gap: 14px;
+  animation: aparecer 0.25s ease-out;
+}
+
+.screen--centrado {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti__pieza {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation: caer-confeti linear forwards;
+}
+
+@keyframes caer-confeti {
+  to {
+    transform: translateY(110vh) rotate(340deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Botones (componente reutilizable) --- */
+.btn {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-primary {
+  background: var(--schar-red);
+  color: white;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-secondary {
+  background: var(--schar-yellow);
+  color: var(--dark);
+}
+
+.btn-secondary:hover {
+  filter: brightness(1.05);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--schar-red);
+  border: 2px solid var(--schar-red);
+}
+
+/* --- Splash --- */
+.screen--splash {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--schar-yellow);
+  gap: 20px;
+}
+
+.splash__logo {
+  width: 44%;
+  max-width: 190px;
+  height: auto;
+}
+
+.screen--nombre {
+  background: var(--cream);
+}
+
+.nombre-form__icono {
+  font-size: 3rem;
+}
+
+.nombre-form__input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--gray-border);
+  font-size: 1rem;
+  font-family: inherit;
+  text-align: center;
+  background: white;
+  color: var(--dark);
+}
+
+.nombre-form__input:focus {
+  outline: none;
+  border-color: var(--schar-red);
+}
+
+.splash__titulo {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--dark);
+  margin: 0;
+  line-height: 1.1;
+}
+
+.splash__subtitulo {
+  font-weight: 700;
+  color: var(--schar-red-dark);
+  margin: 0 0 10px;
+}
+
+/* --- Header (reutilizable en casi todas las pantallas) --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.app-header--center {
+  justify-content: center;
+}
+
+.app-header__back {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--schar-red);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.app-header__back:active {
+  background: rgba(207, 0, 62, 0.08);
+}
+
+.app-header__spacer {
+  width: 1.3rem;
+}
+
+.app-header__titulo {
+  flex: 1;
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 1.2rem;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.icon-button:active {
+  background: rgba(61, 43, 48, 0.08);
+}
+
+.icon-button--estatico {
+  cursor: default;
+}
+
+.icon-button--avatar {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--schar-red);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 800;
+  border-radius: 50%;
+  padding: 0;
+}
+
+/* --- Footer (reutilizable: Home, Alacena) --- */
+.app-footer {
+  text-align: center;
+  color: #6f5d5f;
+  font-size: 0.85rem;
+  padding-top: 8px;
+}
+
+/* --- Home --- */
+.home__saludo {
+  font-size: 2.4rem;
+  margin: 6px 0 0;
+}
+
+.home__pregunta {
+  font-size: 1.1rem;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+.home__acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.home__pie {
+  text-align: center;
+  color: #6f5d5f;
+  font-size: 0.85rem;
+}
+
+/* --- Cómo jugar --- */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.howto-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+}
+
+.howto-list__item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.95rem;
+}
+
+.howto-list__icono {
+  font-size: 1.4rem;
+}
+
+/* --- Selección de nivel --- */
+.level-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.level-list__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: white;
+  border: 1px solid var(--gray-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.level-list__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.level-list__numero {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--schar-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.level-list__numero--ok {
+  background: var(--green);
+  color: white;
+}
+
+.level-list__titulo {
+  flex: 1;
+}
+
+.level-list__flecha {
+  color: var(--schar-red);
+  font-size: 1.3rem;
+}
+
+/* --- Intro de nivel --- */
+.level-intro__badge {
+  align-self: center;
+  background: var(--schar-yellow);
+  font-weight: 800;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.level-intro__titulo {
+  text-align: center;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.level-intro__icono {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.level-intro__texto {
+  text-align: center;
+  color: #6f5d5f;
+  margin: 0 0 20px;
+}
+
+/* --- Juego --- */
+.screen--juego {
+  gap: 10px;
+  /* Un poco menos de margen lateral que el resto de las pantallas:
+     así la grilla gana ancho y las celdas son más fáciles de tocar. */
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.game-timer {
+  background: var(--dark);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.3s ease;
+}
+
+.game-timer--urgente {
+  background: var(--schar-red);
+  animation: pulso-urgente 1s ease-in-out infinite;
+}
+
+.timer-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gray-border);
+  overflow: hidden;
+}
+
+.timer-bar__relleno {
+  height: 100%;
+  background: var(--green);
+  transition: width 1s linear, background 0.3s ease;
+}
+
+.timer-bar__relleno--urgente {
+  background: var(--schar-red);
+  animation: pulso-urgente 1s ease-in-out infinite;
+}
+
+@keyframes pulso-urgente {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.lives-indicator {
+  display: flex;
+  gap: 3px;
+  font-size: 1.1rem;
+}
+
+.lives-indicator__heart {
+  color: var(--schar-red);
+}
+
+.lives-indicator__heart--vacio {
+  color: #dbc8b7;
+}
+
+.game__nivel-titulo {
+  text-align: center;
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.game__nivel-titulo span {
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: #6f5d5f;
+}
+
+.word-grid {
+  display: grid;
+  gap: 2px;
+  background: white;
+  border: 1px solid var(--gray-border);
+  border-radius: 12px;
+  padding: 5px;
+  /* Evita que arrastrar el dedo sobre la grilla scrollee la página o
+     seleccione texto: así el gesto de "marcar la palabra" queda limpio. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.word-grid__cell {
+  aspect-ratio: 1;
+  border: none;
+  background: var(--cream);
+  border-radius: 4px;
+  font-weight: 700;
+  /* Lo calcula WordSearchGrid.jsx en base al ancho real de la grilla,
+     no al ancho de la ventana: así la letra siempre entra en su celda,
+     sea cual sea el tamaño de grilla del nivel. */
+  font-size: var(--cell-font, 14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--dark);
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.word-grid__cell--seleccionada {
+  /* El color del recorrido lo da el trazo resaltador (.word-grid__trazo,
+     dibujado encima). Las letras NO se agrandan ni se mueven: antes tenían
+     un scale(1.05) que las hacía "correrse" al arrastrar. */
+  transform: none;
+}
+
+.word-grid-wrapper {
+  position: relative;
+}
+
+.word-grid__trazo {
+  position: absolute;
+  background: rgba(254, 201, 0, 0.55);
+  border: 2px solid rgba(207, 0, 62, 0.6);
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 1;
+  /* "multiply" deja las letras oscuras y legibles por debajo del marcador. */
+  mix-blend-mode: multiply;
+}
+
+.word-grid__cell--encontrada {
+  background: var(--green);
+  color: white;
+  animation: celda-acierto 0.4s ease;
+}
+
+.word-grid__cell--invalida {
+  background: var(--schar-red);
+  color: white;
+  animation: celda-error 0.3s ease;
+}
+
+@keyframes celda-acierto {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes celda-error {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.game__lista-wrapper {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--gray-border);
+  padding: 10px 14px;
+}
+
+.game__lista-titulo {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: #6f5d5f;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.word-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.word-list__item--encontrada {
+  color: var(--green);
+  text-decoration: line-through;
+}
+
+.game__progreso-texto {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6f5d5f;
+  margin: 0;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #eadfd3;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.25s ease;
+}
+
+/* --- Overlay de palabra encontrada --- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 43, 48, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 10;
+  animation: overlay-fondo 0.2s ease;
+}
+
+@keyframes overlay-fondo {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-card {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.overlay__card {
+  background: white;
+  border-radius: 18px;
+  padding: 26px 22px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  animation: overlay-card 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overlay__titulo {
+  color: var(--green);
+  font-weight: 800;
+  margin: 0;
+}
+
+.overlay__subtitulo {
+  margin: 0;
+  color: #6f5d5f;
+}
+
+.overlay__palabra {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+}
+
+.overlay__dato {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: #4f3d41;
+  line-height: 1.4;
+}
+
+/* --- Fin de nivel / trofeo / premio --- */
+.trophy {
+  font-size: 4rem;
+}
+
+.game-over__detalle {
+  color: #6f5d5f;
+}
+
+.prize__emoji {
+  font-size: 5rem;
+}
+
+/* Escenario del premio: rayos giratorios + producto con "pop" + destellos */
+.screen--premio {
+  gap: 12px;
+}
+
+.prize__cinta {
+  background: var(--schar-red);
+  color: white;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  padding: 6px 18px;
+  border-radius: 6px;
+  transform: rotate(-2deg);
+  box-shadow: 0 3px 0 var(--schar-red-dark);
+  animation: cinta-entra 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cinta-entra {
+  from { transform: translateY(-20px) rotate(-8deg) scale(0.6); opacity: 0; }
+  to { transform: translateY(0) rotate(-2deg) scale(1); opacity: 1; }
+}
+
+.prize__escenario {
+  position: relative;
+  width: 290px;
+  height: 290px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prize__rayos {
+  position: absolute;
+  inset: -50px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(254, 201, 0, 0.6) 0deg 9deg, rgba(254, 201, 0, 0) 9deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 25%, transparent 68%);
+  animation: rayos-giran 22s linear infinite;
+}
+
+@keyframes rayos-giran {
+  to { transform: rotate(360deg); }
+}
+
+.prize__foto {
+  position: relative;
+  width: auto;
+  height: auto;
+  max-width: 270px;
+  max-height: 270px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 14px rgba(61, 43, 48, 0.35));
+  animation: premio-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both, premio-flota 3.4s ease-in-out 0.8s infinite;
+}
+
+@keyframes premio-pop {
+  0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(-4deg); opacity: 1; }
+}
+
+@keyframes premio-flota {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-9px) rotate(3deg); }
+}
+
+.prize__destello {
+  position: absolute;
+  color: var(--schar-yellow-dark);
+  font-size: 1.6rem;
+  animation: destello 1.8s ease-in-out infinite;
+}
+
+.prize__destello--1 { top: 2%; left: 8%; }
+.prize__destello--2 { top: 14%; right: 4%; color: var(--schar-red); font-size: 1.1rem; animation-delay: 0.5s; }
+.prize__destello--3 { bottom: 10%; left: 2%; color: var(--schar-red); font-size: 1.1rem; animation-delay: 1s; }
+.prize__destello--4 { bottom: 4%; right: 10%; animation-delay: 0.25s; }
+
+@keyframes destello {
+  0%, 100% { transform: scale(0.4) rotate(0deg); opacity: 0.2; }
+  50% { transform: scale(1.2) rotate(25deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prize__rayos, .prize__foto, .prize__destello { animation: none; }
+}
+
+.prize__nombre {
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+/* --- Producto (tarjeta reutilizable) --- */
+.product-card {
+  background: white;
+  border: 1px solid var(--gray-border);
+  border-radius: 16px;
+  padding: 18px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-card--chico {
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.product-card--chico .product-card__emoji {
+  width: 44px;
+  height: 44px;
+  font-size: 1.4rem;
+}
+
+.product-card--bloqueado {
+  opacity: 0.55;
+}
+
+.product-card--bloqueado .product-card__emoji {
+  background: var(--cream);
+}
+
+.product-card__emoji {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--schar-yellow);
+  font-size: 2rem;
+}
+
+/* Cuando el producto tiene foto real del packaging (en vez de emoji), el
+   círculo amarillo se cambia por una tarjetita blanca/redondeada, más
+   parecida a como se muestra un producto real en una góndola o app. */
+.product-card__emoji--foto {
+  border-radius: 16px;
+  background: white;
+  border: 1px solid var(--gray-border);
+  padding: 6px;
+}
+
+.product-card__emoji--foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.product-card__nombre {
+  margin: 0;
+}
+
+/* Producto real (sticker): se muestra grande sobre un fondo amarillo
+   suave, ligeramente inclinado, como pegado en la alacena. */
+.product-card--grande .product-card__emoji--foto {
+  width: 100%;
+  height: 220px;
+  border: none;
+  padding: 14px;
+  background: radial-gradient(circle at 50% 45%, #fff3b0 0%, var(--schar-yellow) 100%);
+}
+
+.product-card--grande .product-card__emoji--foto img {
+  transform: rotate(-3deg);
+  filter: drop-shadow(0 6px 8px rgba(61, 43, 48, 0.3));
+}
+
+.product-card--chico .product-card__emoji--foto {
+  width: 100%;
+  height: 84px;
+  padding: 6px;
+  border: none;
+  background: radial-gradient(circle at 50% 45%, #fff3b0 0%, var(--schar-yellow) 100%);
+}
+
+.product-card--chico .product-card__emoji--foto img {
+  filter: drop-shadow(0 3px 4px rgba(61, 43, 48, 0.3));
+}
+
+.product-card__nombre-chico {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--dark);
+}
+
+.product-card__descripcion {
+  margin: 0;
+  color: #6f5d5f;
+  font-size: 0.85rem;
+}
+
+.product-card__usos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.product-card__uso-tag {
+  background: var(--cream);
+  border: 1px solid var(--gray-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+}
+
+/* --- Alacena --- */
+.alacena__contador {
+  color: #6f5d5f;
+  margin: 0 0 4px;
+}
+
+.alacena__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* --- Final --- */
+.final__titulo-experto {
+  color: var(--schar-red);
+}
+
+.final__stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.final__stats li {
+  display: flex;
+  justify-content: space-between;
+  background: white;
+  border: 1px solid var(--gray-border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+
+
+/* --- Tipografía de marca: títulos serif bold (tipo Times Extra Bold del
+   brand book) y texto en sans (tipo Museo Sans). Las letras de la sopa
+   siguen en sans para que se lean bien. --- */
+h1, h2, h3,
+.section-title,
+.splash__titulo,
+.level-intro__titulo,
+.overlay__titulo,
+.overlay__palabra,
+.game__nivel-titulo {
+  font-family: var(--font-titulos);
+  font-weight: 900;
+  font-variant-numeric: lining-nums;
+}
+
+.game__nivel-titulo span {
+  font-family: var(--font-principal);
+}
+
+/* --- Personajes educativos del brand book (stickers con borde blanco) --- */
+.personaje {
+  display: block;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(61, 43, 48, 0.25));
+  animation: personaje-flota 3.2s ease-in-out infinite;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.personaje--chico { height: 120px; width: auto; }
+.personaje--medio { height: 190px; width: auto; }
+.personaje--grande { height: 250px; width: auto; }
+
+@keyframes personaje-flota {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-6px) rotate(1.5deg); }
+}
+
+.overlay__personaje {
+  display: flex;
+  justify-content: center;
+  margin-top: -64px;
+}
+
+.final__personajes {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personaje { animation: none; }
+}
+
+
+/* --- Botón "Inicio": flota abajo, fijo dentro del marco (no scrollea) --- */
+.home-fab {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: 2px solid var(--dark);
+  border-radius: 999px;
+  background: var(--schar-yellow);
+  color: var(--dark);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--dark);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.home-fab:hover {
+  background: #ffd633;
+}
+
+.home-fab:active {
+  transform: translateX(-50%) translateY(2px);
+  box-shadow: 0 1px 0 var(--dark);
+}
+
+/* Deja lugar abajo para que el botón no tape el contenido al scrollear. */
+.phone-screen--con-inicio {
+  padding-bottom: 66px;
+}
+
+
+/* --- Pista: aro que late sobre la primera letra de una palabra --- */
+.word-grid__cell--pista {
+  background: var(--schar-yellow);
+  box-shadow: 0 0 0 3px var(--schar-red);
+  animation: pista-late 0.8s ease-in-out infinite;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes pista-late {
+  0%, 100% { box-shadow: 0 0 0 2px var(--schar-red); }
+  50% { box-shadow: 0 0 0 7px rgba(207, 0, 62, 0.25); }
+}
+
+.btn-pista {
+  align-self: center;
+  background: white;
+  border: 2px solid var(--schar-yellow-dark);
+  color: var(--dark);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.btn-pista:hover:not(:disabled) {
+  background: #fff3b0;
+}
+
+.btn-pista:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+/* Enlace discreto para borrar el progreso guardado y cambiar de jugador */
+.home__cambiar {
+  align-self: center;
+  background: none;
+  border: none;
+  color: #6f5d5f;
+  font-family: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 8px;
+}
