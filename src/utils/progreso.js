@@ -8,8 +8,10 @@ const CLAVE = 'mision-sin-gluten-progreso-v1'
 
 const VACIO = {
   nombreJugador: '',
+  preferencia: '', // 'dulce' | 'salado' | 'ambos'
   nivelesCompletados: [],
   productosDesbloqueados: [],
+  colaProductos: [], // premios ganados que todavía no se guardaron en la alacena
   palabrasEncontradasTotal: 0,
   puntajeTotal: 0,
 }
@@ -22,21 +24,21 @@ export function cargarProgreso() {
 
     const idsNiveles = NIVELES.map((n) => n.id)
     const idsProductos = PRODUCTOS.map((p) => p.id)
-    const nivelesCompletados = (Array.isArray(d.nivelesCompletados) ? d.nivelesCompletados : []).filter((id) =>
-      idsNiveles.includes(id)
-    )
+    const lista = (x) => (Array.isArray(x) ? x : [])
 
+    const productosDesbloqueados = lista(d.productosDesbloqueados).filter((id) => idsProductos.includes(id))
     // Si se cerró la página justo entre "nivel completo" y "guardar en la
-    // alacena", los productos de los niveles ya completados se recuperan
-    // acá para que el jugador nunca pierda un premio ganado.
-    const deNivelesCompletos = NIVELES.filter((n) => nivelesCompletados.includes(n.id)).flatMap((n) => n.productosIds)
-    const guardados = Array.isArray(d.productosDesbloqueados) ? d.productosDesbloqueados : []
-    const productosDesbloqueados = idsProductos.filter((id) => guardados.includes(id) || deNivelesCompletos.includes(id))
+    // alacena", los premios pendientes se recuperan para no perderlos.
+    const colaProductos = lista(d.colaProductos).filter(
+      (id) => idsProductos.includes(id) && !productosDesbloqueados.includes(id)
+    )
 
     return {
       nombreJugador: typeof d.nombreJugador === 'string' ? d.nombreJugador.slice(0, 30) : '',
-      nivelesCompletados,
+      preferencia: ['dulce', 'salado', 'ambos'].includes(d.preferencia) ? d.preferencia : '',
+      nivelesCompletados: lista(d.nivelesCompletados).filter((id) => idsNiveles.includes(id)),
       productosDesbloqueados,
+      colaProductos,
       palabrasEncontradasTotal: Number.isFinite(d.palabrasEncontradasTotal) ? d.palabrasEncontradasTotal : 0,
       puntajeTotal: Number.isFinite(d.puntajeTotal) ? d.puntajeTotal : 0,
     }

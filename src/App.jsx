@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { NIVELES, getNivelPorId, getProductoPorId } from './data/levels.js'
 import { useEscalaPantalla } from './hooks/useEscalaPantalla.js'
-import { cargarProgreso, guardarProgreso, borrarProgreso } from './utils/progreso.js'
+import { JuegoProvider, useJuego } from './context/JuegoContext.jsx'
 
 import SplashScreen from './screens/SplashScreen.jsx'
 import NameScreen from './screens/NameScreen.jsx'
+import PreferenceScreen from './screens/PreferenceScreen.jsx'
 import HomeScreen from './screens/HomeScreen.jsx'
 import HowToPlayScreen from './screens/HowToPlayScreen.jsx'
 import LevelSelectScreen from './screens/LevelSelectScreen.jsx'
@@ -15,201 +17,261 @@ import PrizeScreen from './screens/PrizeScreen.jsx'
 import ProductUnlockedScreen from './screens/ProductUnlockedScreen.jsx'
 import AlacenaScreen from './screens/AlacenaScreen.jsx'
 import FinalScreen from './screens/FinalScreen.jsx'
+import NotFoundScreen from './screens/NotFoundScreen.jsx'
 import Button from './components/Button.jsx'
 
-// App.jsx es el "controlador" de la navegación: guarda en qué pantalla
-// estamos y el progreso del jugador, y se lo pasa a cada pantalla por
-// props junto con las funciones para avanzar. Las pantallas no saben
-// nada entre sí, solo reciben datos y callbacks.
+// ---------------------------------------------------------------------------
+// Mapa de navegación (React Router)
+//   /                       bienvenida
+//   /nombre                 registro del jugador
+//   /preferencia            ¿dulce o salado?
+//   /inicio                 menú principal
+//   /como-jugar             instrucciones
+//   /niveles                selección de nivel
+//   /nivel/:id              presentación del nivel
+//   /nivel/:id/jugar        el juego
+//   /nivel/:id/completo     misión cumplida
+//   /premio                 producto desbloqueado (con rayos y confetti)
+//   /premio/producto        detalle del producto + guardar en la alacena
+//   /alacena                colección de productos
+//   /final                  pantalla de cierre (solo si completaste los 6 niveles)
+//   *                       página no encontrada
+// ---------------------------------------------------------------------------
+
+// Rutas que necesitan haberte registrado: si todavía no pusiste tu nombre o
+// tu gusto, te mandan a completarlos y recién después seguís.
+function Requiere({ children }) {
+  const { nombreJugador, preferencia } = useJuego()
+  if (!nombreJugador) return <Navigate to="/nombre" replace />
+  if (!preferencia) return <Navigate to="/preferencia" replace />
+  return children
+}
+
+// Un nivel se puede abrir si es el primero o si completaste el anterior.
+function useNivelDesbloqueado() {
+  const { id } = useParams()
+  const { nivelesCompletados } = useJuego()
+  const nivel = getNivelPorId(id)
+  if (!nivel) return { nivel: null, permitido: false }
+  const idx = NIVELES.findIndex((n) => n.id === nivel.id)
+  const permitido = idx === 0 || nivelesCompletados.includes(NIVELES[idx - 1].id)
+  return { nivel, permitido }
+}
+
+function RutaSplash() {
+  const navigate = useNavigate()
+  return <SplashScreen onComenzar={() => navigate('/inicio')} />
+}
+
+function RutaNombre() {
+  const navigate = useNavigate()
+  const { registrarJugador, preferencia } = useJuego()
+  return (
+    <NameScreen
+      onContinuar={(nombre) => {
+        registrarJugador(nombre)
+        navigate(preferencia ? '/inicio' : '/preferencia')
+      }}
+    />
+  )
+}
+
+function RutaPreferencia() {
+  const navigate = useNavigate()
+  const { nombreJugador, preferencia, setPreferencia } = useJuego()
+  if (!nombreJugador) return <Navigate to="/nombre" replace />
+  return (
+    <PreferenceScreen
+      nombreJugador={nombreJugador}
+      actual={preferencia}
+      onVolver={preferencia ? () => navigate('/inicio') : undefined}
+      onElegir={(p) => {
+        setPreferencia(p)
+        navigate('/inicio')
+      }}
+    />
+  )
+}
+
+function RutaInicio() {
+  const navigate = useNavigate()
+  const { nombreJugador, preferencia, cambiarJugador } = useJuego()
+  return (
+    <HomeScreen
+      nombreJugador={nombreJugador}
+      preferencia={preferencia}
+      onJugar={() => navigate('/niveles')}
+      onAlacena={() => navigate('/alacena')}
+      onComoJugar={() => navigate('/como-jugar')}
+      onCambiarGusto={() => navigate('/preferencia')}
+      onCambiarJugador={() => {
+        cambiarJugador()
+        navigate('/nombre')
+      }}
+    />
+  )
+}
+
+function RutaNiveles() {
+  const navigate = useNavigate()
+  const { nivelesCompletados } = useJuego()
+  return (
+    <LevelSelectScreen
+      niveles={NIVELES}
+      nivelesCompletados={nivelesCompletados}
+      onSelectNivel={(id) => navigate(`/nivel/${id}`)}
+      onVolver={() => navigate('/inicio')}
+    />
+  )
+}
+
+function RutaIntroNivel() {
+  const navigate = useNavigate()
+  const { nivel, permitido } = useNivelDesbloqueado()
+  if (!nivel || !permitido) return <Navigate to="/niveles" replace />
+  return (
+    <LevelIntroScreen nivel={nivel} onComenzar={() => navigate(`/nivel/${nivel.id}/jugar`)} onVolver={() => navigate('/niveles')} />
+  )
+}
+
+function RutaJuego() {
+  const navigate = useNavigate()
+  const { nombreJugador, completarNivel } = useJuego()
+  const { nivel, permitido } = useNivelDesbloqueado()
+  if (!nivel || !permitido) return <Navigate to="/niveles" replace />
+  return (
+    <GameScreen
+      nivel={nivel}
+      nombreJugador={nombreJugador}
+      onNivelCompleto={(n, resultado) => {
+        completarNivel(n, resultado)
+        navigate(`/nivel/${n.id}/completo`, { replace: true })
+      }}
+      onVolver={() => navigate('/niveles')}
+    />
+  )
+}
+
+function RutaNivelCompleto() {
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const { nombreJugador, nivelesCompletados, colaProductos, juegoTerminado, ultimoResultado } = useJuego()
+  if (!nivelesCompletados.includes(Number(id))) return <Navigate to="/niveles" replace />
+  const resultado = ultimoResultado?.nivelId === Number(id) ? ultimoResultado : null
+  const siguiente = juegoTerminado ? '/final' : '/niveles'
+  return (
+    <LevelCompleteScreen
+      nombreJugador={nombreJugador}
+      resultado={resultado}
+      onVerPremio={() => navigate(colaProductos.length > 0 ? '/premio' : siguiente)}
+    />
+  )
+}
+
+function RutaPremio() {
+  const navigate = useNavigate()
+  const { colaProductos, juegoTerminado } = useJuego()
+  // Sin premios pendientes no hay nada que mostrar acá: se sigue al próximo paso.
+  if (colaProductos.length === 0) return <Navigate to={juegoTerminado ? '/final' : '/niveles'} replace />
+  return <PrizeScreen producto={getProductoPorId(colaProductos[0])} onSumarAlacena={() => navigate('/premio/producto')} />
+}
+
+function RutaProducto() {
+  const navigate = useNavigate()
+  const { colaProductos, guardarPrimerProducto, juegoTerminado, preferencia } = useJuego()
+  // Al guardar el último premio la cola queda vacía antes de que el router
+  // termine de cambiar de ruta: por eso este redirect apunta al mismo destino.
+  if (colaProductos.length === 0) return <Navigate to={juegoTerminado ? '/final' : '/niveles'} replace />
+  const producto = getProductoPorId(colaProductos[0])
+  return (
+    <ProductUnlockedScreen
+      producto={producto}
+      esDeTuGusto={producto.tipo === preferencia}
+      onGuardar={() => {
+        guardarPrimerProducto()
+        navigate(colaProductos.length > 1 ? '/premio' : juegoTerminado ? '/final' : '/niveles', { replace: true })
+      }}
+    />
+  )
+}
+
+function RutaAlacena() {
+  const navigate = useNavigate()
+  const { productosDesbloqueados } = useJuego()
+  return <AlacenaScreen productosDesbloqueados={productosDesbloqueados} onVolver={() => navigate('/inicio')} />
+}
+
+function RutaFinal() {
+  const navigate = useNavigate()
+  const juego = useJuego()
+  if (!juego.juegoTerminado) return <Navigate to="/inicio" replace />
+  return (
+    <FinalScreen
+      nombreJugador={juego.nombreJugador}
+      preferencia={juego.preferencia}
+      nivelesCompletados={juego.nivelesCompletados}
+      productosDesbloqueados={juego.productosDesbloqueados}
+      palabrasEncontradasTotal={juego.palabrasEncontradasTotal}
+      puntajeTotal={juego.puntajeTotal}
+      onAlacena={() => navigate('/alacena')}
+      onVolverAJugar={() => {
+        juego.reiniciarJuego()
+        navigate('/inicio')
+      }}
+    />
+  )
+}
+
+// Botón "INICIO" flotante: aparece en las secciones donde tiene sentido salir.
+// No aparece en la bienvenida, el registro, el inicio mismo ni en el tramo del
+// premio (nivel completo -> premio -> producto), porque ahí hay un producto
+// por guardar y salir a la mitad lo haría esperar.
+const RUTAS_CON_INICIO = [/^\/como-jugar$/, /^\/niveles$/, /^\/nivel\/\d+$/, /^\/nivel\/\d+\/jugar$/, /^\/alacena$/, /^\/final$/]
+
 export default function App() {
   const escala = useEscalaPantalla()
-  const [pantalla, setPantalla] = useState('splash')
-  const [nivelActualId, setNivelActualId] = useState(null)
-  // El progreso guardado en el navegador (si hay) se lee una sola vez, al abrir.
-  const [guardado] = useState(cargarProgreso)
-  const [nombreJugador, setNombreJugador] = useState(guardado.nombreJugador)
+  return (
+    <JuegoProvider>
+      <Marco escala={escala} />
+    </JuegoProvider>
+  )
+}
 
-  const [nivelesCompletados, setNivelesCompletados] = useState(guardado.nivelesCompletados)
-  const [productosDesbloqueados, setProductosDesbloqueados] = useState(guardado.productosDesbloqueados)
-  const [palabrasEncontradasTotal, setPalabrasEncontradasTotal] = useState(guardado.palabrasEncontradasTotal)
-  const [puntajeTotal, setPuntajeTotal] = useState(guardado.puntajeTotal)
-
-  const [colaProductos, setColaProductos] = useState([])
-  const [juegoTerminado, setJuegoTerminado] = useState(guardado.nivelesCompletados.length === NIVELES.length)
+function Marco({ escala }) {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [confirmarSalida, setConfirmarSalida] = useState(false)
-
-  // Cada vez que cambia el progreso, se guarda en el navegador.
-  useEffect(() => {
-    guardarProgreso({ nombreJugador, nivelesCompletados, productosDesbloqueados, palabrasEncontradasTotal, puntajeTotal })
-  }, [nombreJugador, nivelesCompletados, productosDesbloqueados, palabrasEncontradasTotal, puntajeTotal])
-
-  const nivelActual = nivelActualId ? getNivelPorId(nivelActualId) : null
-
-  const irA = (pantallaDestino) => setPantalla(pantallaDestino)
-
-  // Botón "Inicio": aparece en todas las secciones salvo la bienvenida, el
-  // registro, el inicio mismo y el tramo del premio (nivel completo ->
-  // premio -> producto), porque ahí hay un producto por guardar y salir
-  // a la mitad lo haría perder. Ese tramo termina siempre en una pantalla
-  // que sí tiene el botón.
-  const PANTALLAS_CON_INICIO = ['howto', 'levels', 'levelIntro', 'game', 'alacena', 'final']
-  const mostrarInicio = PANTALLAS_CON_INICIO.includes(pantalla)
+  const mostrarInicio = RUTAS_CON_INICIO.some((r) => r.test(pathname))
+  const enJuego = /\/jugar$/.test(pathname)
 
   const handleInicio = () => {
     // En pleno juego se pregunta antes: salir hace perder el avance del nivel.
-    if (pantalla === 'game') {
+    if (enJuego) {
       setConfirmarSalida(true)
       return
     }
-    irA('home')
-  }
-
-  const confirmarIrAInicio = () => {
-    setConfirmarSalida(false)
-    irA('home')
-  }
-
-  const handleSeleccionarNivel = (id) => {
-    setNivelActualId(id)
-    irA('levelIntro')
-  }
-
-  const handleNivelCompleto = (nivelId, resultado) => {
-    const nivel = getNivelPorId(nivelId)
-    const yaEstaba = nivelesCompletados.includes(nivelId)
-    const nuevosCompletados = yaEstaba ? nivelesCompletados : [...nivelesCompletados, nivelId]
-
-    setNivelesCompletados(nuevosCompletados)
-    setPuntajeTotal((p) => p + resultado.puntaje)
-    if (!yaEstaba) setPalabrasEncontradasTotal((p) => p + nivel.palabras.length)
-
-    setJuegoTerminado(nuevosCompletados.length === NIVELES.length)
-    setColaProductos(yaEstaba ? [] : nivel.productosIds)
-    irA('levelComplete')
-  }
-
-  const handleVerPremio = () => {
-    if (colaProductos.length === 0) {
-      irA(juegoTerminado ? 'final' : 'levels')
-      return
-    }
-    irA('prize')
-  }
-
-  const handleGuardarEnAlacena = () => {
-    const [actual, ...resto] = colaProductos
-    setProductosDesbloqueados((prev) => (prev.includes(actual) ? prev : [...prev, actual]))
-    setColaProductos(resto)
-    if (resto.length > 0) {
-      irA('prize')
-    } else {
-      irA(juegoTerminado ? 'final' : 'levels')
-    }
-  }
-
-  // "¿No sos vos?": borra el progreso guardado y vuelve al registro.
-  const cambiarJugador = () => {
-    borrarProgreso()
-    setNombreJugador('')
-    setNivelesCompletados([])
-    setProductosDesbloqueados([])
-    setPalabrasEncontradasTotal(0)
-    setPuntajeTotal(0)
-    setColaProductos([])
-    setJuegoTerminado(false)
-    setNivelActualId(null)
-    irA('nombre')
-  }
-
-  const reiniciarJuego = () => {
-    setNivelesCompletados([])
-    setProductosDesbloqueados([])
-    setPalabrasEncontradasTotal(0)
-    setPuntajeTotal(0)
-    setColaProductos([])
-    setJuegoTerminado(false)
-    setNivelActualId(null)
-    irA('home')
+    navigate('/inicio')
   }
 
   return (
     <div className="phone-frame" style={{ transform: `scale(${escala})` }}>
       <div className={`phone-screen${mostrarInicio ? ' phone-screen--con-inicio' : ''}`}>
-        {pantalla === 'splash' && <SplashScreen onComenzar={() => irA(nombreJugador ? 'home' : 'nombre')} />}
-
-        {pantalla === 'nombre' && (
-          <NameScreen
-            onContinuar={(nombre) => {
-              setNombreJugador(nombre)
-              irA('home')
-            }}
-          />
-        )}
-
-        {pantalla === 'home' && (
-          <HomeScreen
-            nombreJugador={nombreJugador}
-            onJugar={() => irA('levels')}
-            onAlacena={() => irA('alacena')}
-            onComoJugar={() => irA('howto')}
-            onCambiarJugador={cambiarJugador}
-          />
-        )}
-
-        {pantalla === 'howto' && <HowToPlayScreen onVolver={() => irA('home')} onJugar={() => irA('levels')} />}
-
-        {pantalla === 'levels' && (
-          <LevelSelectScreen
-            niveles={NIVELES}
-            nivelesCompletados={nivelesCompletados}
-            onSelectNivel={handleSeleccionarNivel}
-            onVolver={() => irA('home')}
-          />
-        )}
-
-        {pantalla === 'levelIntro' && nivelActual && (
-          <LevelIntroScreen nivel={nivelActual} onComenzar={() => irA('game')} onVolver={() => irA('levels')} />
-        )}
-
-        {pantalla === 'game' && nivelActual && (
-          <GameScreen
-            nivel={nivelActual}
-            nombreJugador={nombreJugador}
-            onNivelCompleto={handleNivelCompleto}
-            onVolver={() => irA('levels')}
-          />
-        )}
-
-        {pantalla === 'levelComplete' && (
-          <LevelCompleteScreen nombreJugador={nombreJugador} onVerPremio={handleVerPremio} />
-        )}
-
-        {pantalla === 'prize' && colaProductos[0] && (
-          <PrizeScreen producto={getProductoPorId(colaProductos[0])} onSumarAlacena={() => irA('productDetail')} />
-        )}
-
-        {pantalla === 'productDetail' && colaProductos[0] && (
-          <ProductUnlockedScreen producto={getProductoPorId(colaProductos[0])} onGuardar={handleGuardarEnAlacena} />
-        )}
-
-        {pantalla === 'alacena' && (
-          <AlacenaScreen
-            productosDesbloqueados={productosDesbloqueados}
-            onVolver={() => irA(juegoTerminado || nivelesCompletados.length > 0 ? 'home' : 'home')}
-          />
-        )}
-
-        {pantalla === 'final' && (
-          <FinalScreen
-            nombreJugador={nombreJugador}
-            nivelesCompletados={nivelesCompletados}
-            productosDesbloqueados={productosDesbloqueados}
-            palabrasEncontradasTotal={palabrasEncontradasTotal}
-            puntajeTotal={puntajeTotal}
-            onAlacena={() => irA('alacena')}
-            onVolverAJugar={reiniciarJuego}
-          />
-        )}
+        <Routes>
+          <Route path="/" element={<RutaSplash />} />
+          <Route path="/nombre" element={<RutaNombre />} />
+          <Route path="/preferencia" element={<RutaPreferencia />} />
+          <Route path="/inicio" element={<Requiere><RutaInicio /></Requiere>} />
+          <Route path="/como-jugar" element={<Requiere><HowToPlayRoute /></Requiere>} />
+          <Route path="/niveles" element={<Requiere><RutaNiveles /></Requiere>} />
+          <Route path="/nivel/:id" element={<Requiere><RutaIntroNivel /></Requiere>} />
+          <Route path="/nivel/:id/jugar" element={<Requiere><RutaJuego /></Requiere>} />
+          <Route path="/nivel/:id/completo" element={<Requiere><RutaNivelCompleto /></Requiere>} />
+          <Route path="/premio" element={<Requiere><RutaPremio /></Requiere>} />
+          <Route path="/premio/producto" element={<Requiere><RutaProducto /></Requiere>} />
+          <Route path="/alacena" element={<Requiere><RutaAlacena /></Requiere>} />
+          <Route path="/final" element={<Requiere><RutaFinal /></Requiere>} />
+          <Route path="*" element={<NotFoundScreen onVolver={() => navigate('/')} />} />
+        </Routes>
       </div>
 
       {mostrarInicio && (
@@ -224,10 +286,23 @@ export default function App() {
             <h2 className="overlay__palabra">¿Salir al inicio?</h2>
             <p className="overlay__dato">Si salís ahora, perdés el avance de este nivel.</p>
             <Button onClick={() => setConfirmarSalida(false)}>SEGUIR JUGANDO</Button>
-            <Button variant="ghost" onClick={confirmarIrAInicio}>SALIR AL INICIO</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setConfirmarSalida(false)
+                navigate('/inicio')
+              }}
+            >
+              SALIR AL INICIO
+            </Button>
           </div>
         </div>
       )}
     </div>
   )
+}
+
+function HowToPlayRoute() {
+  const navigate = useNavigate()
+  return <HowToPlayScreen onVolver={() => navigate('/inicio')} onJugar={() => navigate('/niveles')} />
 }

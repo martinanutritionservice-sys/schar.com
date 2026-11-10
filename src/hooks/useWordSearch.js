@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useRef } from 'react'
 
 // 8 direcciones posibles: horizontal, vertical y diagonales (y sus inversas)
 const DIRECCIONES = [
@@ -19,6 +19,7 @@ export const DIRECCIONES_POR_DIFICULTAD = {
   facil: [DIRECCIONES[0], DIRECCIONES[2]], // → ↓
   medio: [DIRECCIONES[0], DIRECCIONES[2], DIRECCIONES[4]], // → ↓ ↘
   dificil: [DIRECCIONES[0], DIRECCIONES[2], DIRECCIONES[4], DIRECCIONES[7]], // → ↓ ↘ ↗
+  experto: DIRECCIONES, // las 8, incluso al revés
 }
 
 const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -124,6 +125,11 @@ export function useWordSearch(palabras, tamaño = 10, dificultad = 'facil') {
   const [celdaActual, setCeldaActual] = useState(null)
   const [celdasEncontradas, setCeldasEncontradas] = useState({}) // "fila-col" -> true
   const [ultimoIntentoInvalido, setUltimoIntentoInvalido] = useState(null)
+  // Copia "en vivo" del arrastre en curso. El estado de React se actualiza
+  // recién en el próximo render, pero un dedo rápido puede soltar antes de
+  // ese render: leyendo de estas refs, la última celda tocada nunca se pierde.
+  const inicioRef = useRef(null)
+  const actualRef = useRef(null)
 
   const reiniciar = useCallback(() => {
     setTablero(generarGrilla(palabras, tamaño, direcciones))
@@ -175,12 +181,15 @@ export function useWordSearch(palabras, tamaño = 10, dificultad = 'facil') {
 
   // Se apoya el dedo/click en la celda inicial: arranca el arrastre.
   const iniciarArrastre = useCallback((fila, col) => {
+    inicioRef.current = { fila, col }
+    actualRef.current = { fila, col }
     setCeldaInicio({ fila, col })
     setCeldaActual({ fila, col })
   }, [])
 
   // Se mueve el dedo/mouse sobre una nueva celda mientras se arrastra.
   const continuarArrastre = useCallback((fila, col) => {
+    actualRef.current = { fila, col }
     setCeldaActual((prev) => {
       if (prev && prev.fila === fila && prev.col === col) return prev
       return { fila, col }
@@ -206,33 +215,27 @@ export function useWordSearch(palabras, tamaño = 10, dificultad = 'facil') {
   // Se suelta el dedo/click: se valida lo que quedó marcado.
   const finalizarArrastre = useCallback(
     (palabrasRestantes, onResultado) => {
-      if (
-        celdaInicio &&
-        celdaActual &&
-        !(celdaInicio.fila === celdaActual.fila && celdaInicio.col === celdaActual.col)
-      ) {
-        const { celdas, palabra } = intentarSeleccion(
-          celdaInicio.fila,
-          celdaInicio.col,
-          celdaActual.fila,
-          celdaActual.col,
-          palabrasRestantes
-        )
+      const inicio = inicioRef.current
+      const actual = actualRef.current
+      if (inicio && actual && !(inicio.fila === actual.fila && inicio.col === actual.col)) {
+        const { celdas, palabra } = intentarSeleccion(inicio.fila, inicio.col, actual.fila, actual.col, palabrasRestantes)
 
         if (palabra) {
           marcarEncontrada(celdas)
           onResultado({ acierto: true, palabra, celdas })
         } else {
-          setUltimoIntentoInvalido(celdas.length ? celdas : [celdaInicio])
+          setUltimoIntentoInvalido(celdas.length ? celdas : [inicio])
           onResultado({ acierto: false, palabra: null, celdas })
           window.setTimeout(() => setUltimoIntentoInvalido(null), 350)
         }
       }
 
+      inicioRef.current = null
+      actualRef.current = null
       setCeldaInicio(null)
       setCeldaActual(null)
     },
-    [celdaInicio, celdaActual, intentarSeleccion, marcarEncontrada]
+    [intentarSeleccion, marcarEncontrada]
   )
 
   const estadoCeldas = useMemo(() => {

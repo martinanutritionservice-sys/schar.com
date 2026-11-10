@@ -2,9 +2,10 @@ import { useState } from 'react'
 import Button from '../components/Button.jsx'
 import Header from '../components/Header.jsx'
 import Footer from '../components/Footer.jsx'
+import { PREFERENCIAS } from '../data/levels.js'
 import { getSonidoActivo, setSonidoActivo, sonidoClick } from '../utils/sound.js'
 
-export default function HomeScreen({ nombreJugador, onJugar, onAlacena, onComoJugar, onCambiarJugador }) {
+export default function HomeScreen({ nombreJugador, preferencia, onJugar, onAlacena, onComoJugar, onCambiarGusto, onCambiarJugador }) {
   // Estado propio de esta pantalla: si el sonido del juego está activo.
   // Arranca leyendo lo que ya se había guardado (o true por defecto).
   const [sonidoOn, setSonidoOn] = useState(getSonidoActivo)
@@ -54,6 +55,11 @@ export default function HomeScreen({ nombreJugador, onJugar, onAlacena, onComoJu
           ¿CÓMO JUGAR? ❓
         </Button>
       </div>
+      {preferencia && (
+        <button type="button" className="home__gusto glass" onClick={onCambiarGusto}>
+          {PREFERENCIAS[preferencia].emoji} {PREFERENCIAS[preferencia].frase} · cambiar
+        </button>
+      )}
       {nombreJugador && (
         <button type="button" className="home__cambiar" onClick={onCambiarJugador}>
           ¿No sos {nombreJugador}? Empezar de nuevo

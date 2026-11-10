@@ -1,11 +1,10 @@
-import { NIVELES, PRODUCTOS } from '../data/levels.js'
+import { NIVELES, PRODUCTOS, TOTAL_PALABRAS, PREFERENCIAS } from '../data/levels.js'
+import { mensajeFinal } from '../data/mensajes.js'
 import Button from '../components/Button.jsx'
 import Confetti from '../components/Confetti.jsx'
 import Personaje from '../components/Personaje.jsx'
 
-const TOTAL_PALABRAS = NIVELES.reduce((acc, n) => acc + n.palabras.length, 0)
-
-export default function FinalScreen({ nombreJugador, nivelesCompletados, productosDesbloqueados, palabrasEncontradasTotal, puntajeTotal, onAlacena, onVolverAJugar }) {
+export default function FinalScreen({ nombreJugador, preferencia, nivelesCompletados, productosDesbloqueados, palabrasEncontradasTotal, puntajeTotal, onAlacena, onVolverAJugar }) {
   return (
     <div className="screen screen--centrado">
       <Confetti />
@@ -13,6 +12,11 @@ export default function FinalScreen({ nombreJugador, nivelesCompletados, product
       <p>
         Sos un/a <strong className="final__titulo-experto">EXPERTO/A SIN GLUTEN</strong>
       </p>
+      {preferencia && (
+        <p className="final__perfil glass">
+          {PREFERENCIAS[preferencia].emoji} {PREFERENCIAS[preferencia].frase}: {mensajeFinal(preferencia)}
+        </p>
+      )}
       <div className="final__personajes">
         <Personaje nombre="chico" tamaño="chico" />
         <Personaje nombre="madre" tamaño="chico" />

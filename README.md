@@ -1,11 +1,28 @@
 # Misión Sin Gluten — Sopa de letras Schär
 
-Juego educativo hecho en React + Vite para la materia Contenidos y
-Creatividad 3. El jugador se registra con su nombre, recorre 6 niveles
-temáticos sobre celiaquía y vida sin gluten, resuelve una sopa de letras
-que se genera de forma distinta en cada partida arrastrando el dedo o el
-mouse (como en una sopa de letras de papel), aprende un dato por cada
-palabra encontrada y va desbloqueando productos Schär para su "alacena".
+Juego web educativo de sopa de letras para **Schär Argentina**, hecho en
+**React + Vite + React Router**. Proyecto integrador de *Contenidos y
+Creatividad III – Videojuegos: Experiencias Interactivas* (Comunicación
+Digital, Universidad de Palermo).
+
+- **Juego online:** https://scharcom-nu.vercel.app
+- **Autora:** Martina Osorio
+
+## Concepto
+
+Una sopa de letras que se juega arrastrando el dedo (o el mouse) sobre las
+letras, como en papel, pero con una misión: **aprender qué es la celiaquía y
+cómo es vivir sin gluten** mientras se completan 6 niveles. Cada palabra
+encontrada revela un dato educativo y, al terminar un nivel, se desbloquean
+productos Schär reales que se guardan en una "alacena" personal.
+
+- **Público:** personas jóvenes y adultas que consumen o conocen la marca,
+  celíacas o no, y sus familias y amigos. Se juega desde el celular, sin
+  instalar nada.
+- **Temática:** celiaquía, alimentación sin gluten y productos Schär,
+  con el tono cercano y los personajes educativos del brand book de la marca.
+- **Objetivo comunicacional:** que la marca se viva como una experiencia
+  (jugar, aprender, coleccionar) y no como un mensaje publicitario.
 
 ## Cómo correrlo
 
@@ -14,89 +31,171 @@ npm install
 npm run dev       # http://localhost:5173
 ```
 
-Para una build de producción:
+Build de producción:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Cómo se cumple la checklist
+## Navegación (React Router)
 
-- **Proyecto React funcionando** — armado con Vite (`npm run dev` /
-  `npm run build` sin errores).
-- **Componentes identificados** — separados en `src/screens` (13
-  pantallas del flujo, incluyendo el registro del nombre) y
-  `src/components` (piezas reutilizables), incluyendo `Header` y
-  `Footer` como componentes propios usados en casi todas las pantallas
-  (además de la App, botones e interactivos).
-- **Primera pantalla construida** — `SplashScreen` + `NameScreen` +
-  `HomeScreen`.
-- **Al menos un componente reutilizable** — `Button`, `Header`,
-  `Footer`, `ProductCard`, `ProgressBar`, `LivesIndicator` y
-  `WordList` se usan en varias pantallas distintas, cada vez con
-  props diferentes.
-- **Props utilizadas correctamente** — toda la navegación y los datos
-  (nombre del jugador, nivel actual, progreso, productos) viajan por
-  props desde `App.jsx` hacia las pantallas; ninguna pantalla conoce a
-  otra directamente.
-- **Al menos un estado con useState** — `App.jsx` guarda la pantalla
-  activa, el nombre del jugador y el progreso; `GameScreen` guarda
-  vidas, tiempo, palabras encontradas y puntaje; el hook
-  `useWordSearch` guarda la grilla y el arrastre en curso.
-- **Al menos un evento** — eventos de puntero (`onPointerDown` +
-  `pointermove`/`pointerup` globales) que arman el arrastre de punta a
-  punta de cada palabra, más los clicks de botones en toda la app.
-- **Algún comportamiento dinámico** — la sopa de letras se genera de
-  cero en cada partida (`src/hooks/useWordSearch.js`): palabras
-  ubicadas en direcciones aleatorias y relleno con letras al azar.
-  También corren un cronómetro (con aviso visual cuando queda poco
-  tiempo) y un sistema de vidas en tiempo real.
-- **Estructura de archivos organizada**:
+Cada pantalla tiene su propia dirección, así se puede recargar o compartir
+sin perder el lugar. Las rutas que lo necesitan están protegidas: si todavía
+no pusiste tu nombre te llevan a registrarte; un nivel bloqueado, un premio
+inexistente o la pantalla final sin haber terminado redirigen donde
+corresponde.
 
-  ```
-  src/
-    data/       contenido del juego (niveles, palabras, productos)
-    hooks/      lógica de la sopa de letras, separada de la UI
-    components/ piezas reutilizables (botón, tarjetas, listas, etc.)
-    screens/    una pantalla por archivo, siguiendo el mockup
-    utils/      sonido (Web Audio API, sin archivos externos)
-    App.jsx     controla la navegación y el progreso del jugador
-  ```
+| Ruta | Pantalla |
+|---|---|
+| `/` | Bienvenida |
+| `/nombre` | Registro del jugador |
+| `/preferencia` | ¿Dulce o salado? |
+| `/inicio` | Menú principal |
+| `/como-jugar` | Instrucciones |
+| `/niveles` | Selección de nivel |
+| `/nivel/:id` | Presentación del nivel (tiempo, vidas, pistas, dificultad) |
+| `/nivel/:id/jugar` | El juego |
+| `/nivel/:id/completo` | Misión cumplida |
+| `/premio` y `/premio/producto` | Producto desbloqueado y guardado en la alacena |
+| `/alacena` | Colección con filtro dulce/salado y zoom |
+| `/final` | Cierre del juego (solo si se completaron los 6 niveles) |
+| `*` | Página 404 con personaje |
 
-## Contenido
+Para que las direcciones funcionen al recargar en Vercel, el archivo
+`vercel.json` redirige todo a `index.html`.
 
-6 niveles (`src/data/levels.js`), 3 palabras cada uno, cada palabra con
-su propio dato educativo sobre celiaquía y vida sin gluten. Al
-completar un nivel aparece un popup de premio y se desbloquean 2
-productos Schär (12 en total) que se guardan en "Mi Alacena".
+## Mecánica
 
-## Interacción y diseño
+- **Sopa de letras generada en cada partida** (`src/hooks/useWordSearch.js`):
+  grilla fija de 10 × 10, palabras en direcciones aleatorias según el nivel y
+  relleno con letras al azar. Si una palabra no entra, el tablero se
+  vuelve a armar, así que nunca queda una palabra imposible de encontrar.
+- **Palabras al azar:** cada nivel tiene un *banco* de 8 a 10 palabras con su
+  dato educativo y en cada partida se sortean algunas. Reintentar un nivel
+  trae palabras y tablero nuevos.
+- **Arrastre tipo papel:** se apoya en la primera letra, se desliza hasta la
+  última y se suelta; un trazo tipo resaltador acompaña el recorrido.
+- **Vidas, cronómetro y pistas:** un error resta una vida; el reloj se pone
+  rojo cuando queda poco; la pista marca la primera letra de una palabra
+  pendiente.
+- **Puntaje:** 100 puntos por palabra + bonus por las vidas que sobran.
+- **Progreso guardado** en el navegador (`localStorage`): nombre, gusto,
+  niveles, alacena y premios pendientes. "¿No sos …? Empezar de nuevo" lo borra.
 
-- **Nombre del jugador**: antes de arrancar se pide un nombre
-  (`NameScreen`), que después personaliza el saludo de Home y las
-  pantallas de nivel completado, derrota y final.
-- **Selección por arrastre**: se marca una palabra apoyando el dedo o
-  el mouse en su primera letra y arrastrando hasta la última, igual que
-  en papel — no hace falta tocar dos veces.
-- **Tamaño de pantalla fijo**: la app se ve siempre del mismo tamaño
-  (ancho de un iPhone estándar, 390px), tanto en el celular como en
-  una ventana de escritorio, en vez de estirarse según la pantalla.
-- **Sonido**: efectos sintetizados con Web Audio API (sin archivos de
-  audio externos) para acierto, error y victoria, con un botón para
-  silenciar en la pantalla de inicio.
+## Niveles y dificultad progresiva
 
-## Diseño (actualización)
+Todo lo que cambia de un nivel a otro está en un solo lugar
+(`src/data/levels.js`), así se puede ajustar sin tocar la lógica.
 
-- Paleta y tipografías tomadas del brand book de Schär: rojo `#CF003E`, amarillo `#FEC900`, marrón `#3D2B30`, beige `#DBC8B7`. Títulos en Playfair Display (parecida a Times Extra Bold) y textos en Nunito Sans (parecida a Museo Sans); se instalan con `npm install` (paquetes `@fontsource`).
-- Personajes educativos del brand book (`src/assets/personajes/`): el gluten acompaña la bienvenida y la intro de cada nivel; el chico, la madre y la estudiante acompañan el dato educativo; el padre aparece en "¡Casi!" y la chica de yoga en "Misión cumplida".
-- Los 12 productos son packagings reales de Schär (`src/assets/productos/`), recortados como stickers; se definen en `src/data/levels.js`.
+| Nivel | Tema | Palabras | Tiempo | Vidas | Pistas | Direcciones |
+|---|---|---|---|---|---|---|
+| 1 · Fácil | Conocé la celiaquía | 4 | 2:00 | 5 | 3 | → ↓ |
+| 2 · Fácil | ¿Dónde está el gluten? | 5 | 2:00 | 5 | 3 | → ↓ |
+| 3 · Medio | Vivir sin gluten | 6 | 1:55 | 4 | 2 | → ↓ ↘ |
+| 4 · Medio | Desafío Schär | 6 | 1:50 | 4 | 2 | → ↓ ↘ |
+| 5 · Difícil | Mitos y verdades | 7 | 1:45 | 3 | 1 | → ↓ ↘ ↗ |
+| 6 · Experto | Cocina casera | 8 | 1:40 | 3 | 0 | las 8, incluso al revés |
 
-## Dificultad
+Son 36 palabras por partida completa, tomadas de bancos de 54 palabras en total.
 
-- Niveles 1-2: las palabras van solo en → y ↓. Niveles 3-4: se suma la diagonal ↘. Niveles 5-6: se suma la diagonal ↗. Nunca van "al revés".
-- Más tiempo por nivel (90 a 100 segundos), una grilla fija de 10 x 10 en TODOS los niveles (misma medida y mismo tamaño de letra) y botón 💡 PISTA (3 por nivel) que marca la primera letra de una palabra pendiente.
+## Personalización
 
-## Progreso guardado
+- **Nombre:** saluda en el inicio, en los mensajes de victoria y derrota y en
+  la pantalla final.
+- **Dulce o salado:** al registrarse se elige un gusto (dulce, salado o los
+  dos). Decide qué productos Schär se desbloquean primero, se muestra con
+  una insignia en cada producto, hay filtro en la alacena y el cierre del juego
+  habla de ese perfil (`src/data/levels.js`, función `elegirPremios`).
+- **Narrativa propia:** mensajes de victoria, de "nivel perfecto", de derrota
+  por vidas y de derrota por tiempo, sorteados al azar y con el nombre de la
+  persona (`src/data/mensajes.js`). Los personajes educativos del brand book
+  acompañan cada momento.
+- **Productos reales:** 12 packagings de Schär en formato sticker, con zoom
+  al tocarlos.
 
-El nombre, los niveles completados y la alacena se guardan en el navegador (localStorage), así que recargar la página no borra nada. En el inicio hay un enlace "¿No sos …? Empezar de nuevo" que borra el progreso y vuelve al registro. El nivel 4 usa palabras de los productos reales que se ganan en ese nivel (Choco Chip Cookies y María).
+## Diseño visual
+
+- **Paleta y tipografía** del brand book de Schär: rojo `#CF003E`, amarillo
+  `#FEC900`, marrón `#3D2B30`, crema `#F7F1EA` y verde `#60813F`. Títulos en
+  Playfair Display y textos en Nunito Sans.
+- **Glassmorphism:** fondo en degradé cálido con manchas de color de la marca
+  que flotan lento, y paneles de vidrio esmerilado (`backdrop-filter: blur`,
+  fondo blanco translúcido, borde claro y sombra suave) en listas de niveles,
+  tablero, tarjetas de producto, ventanas emergentes y botones secundarios.
+  El botón principal queda en rojo sólido para mantener el contraste. Si el
+  navegador no soporta `backdrop-filter`, el vidrio se vuelve más opaco para
+  que todo siga leyéndose, y las animaciones se desactivan si la persona lo
+  pidió en su sistema.
+- **Tamaño fijo tipo celular** (390 × 844) que se escala entero según la
+  ventana, así el diseño se ve igual en cualquier pantalla.
+
+## Estructura del proyecto
+
+```
+src/
+  data/        niveles, bancos de palabras, productos y mensajes
+  context/     estado global del juego (jugador, gusto, progreso)
+  hooks/       lógica de la sopa de letras y escala de pantalla
+  components/  piezas reutilizables (botón, tarjetas, zoom, listas, etc.)
+  screens/     una pantalla por archivo
+  utils/       progreso guardado y sonido (Web Audio API, sin archivos externos)
+  App.jsx      mapa de rutas y marco del juego
+```
+
+## Prueba de usabilidad y ajustes
+
+Se probó el juego con 7 personas externas al proyecto y se anotaron sus
+sugerencias. Cada una derivó en un cambio concreto:
+
+- **Fecha de la prueba:** 2 de noviembre de 2026
+- **Participantes:** 7 personas: 3 compañeros de la materia y 4 compañeros de trabajo
+- **Dispositivos usados:** computadora (compañeros de la materia) y celular (compañeros de trabajo)
+
+| Sugerencia recibida | Cambio realizado |
+|---|---|
+| Aumentar la cantidad de palabras | De 3 a entre 4 y 8 palabras por nivel (36 por partida) |
+| Agrandar / "apretar el zoom" de cada producto | Fotos más grandes en la alacena y el premio, y zoom al tocar cualquier producto |
+| Bajar las pistas según el juego | Las pistas bajan de nivel en nivel: 3, 3, 2, 2, 1 y 0 |
+| Personalizar productos y tema salado / dulce | Pantalla "¿dulce o salado?", orden de premios según el gusto, insignias y filtro en la alacena |
+| Pensar qué más suma a la dificultad de cada nivel | Menos tiempo por palabra, menos vidas, nuevas direcciones (diagonales y al revés), etiqueta y estrellas por nivel |
+| Que sea aleatorio | Bancos de palabras: cada partida sortea palabras distintas y arma un tablero nuevo |
+| Menos tiempo y menos pistas, con dificultad creciente | Tiempo total de 2:00 a 1:40 mientras las palabras pasan de 4 a 8 |
+
+Otros ajustes que salieron al probar y revisar el juego: el trazo del
+resaltador se desalineaba con el marco escalado; si el dedo soltaba muy
+rápido se perdía la última letra (ahora el arrastre se guarda al instante); y
+en el zoom de producto la X de cerrar quedaba tapada por la foto.
+
+## Proceso de desarrollo asistido por IA
+
+El juego se construyó conversando con Claude (Anthropic) como asistente de
+programación, con Martina a cargo de la idea, la dirección de arte y las
+decisiones:
+
+1. **Idea y consigna:** Martina definió el concepto, el público, los niveles,
+   el uso del brand book y los productos reales de Schär.
+2. **Construcción por iteraciones:** se fue pidiendo una mejora por vez
+   (arrastre con resaltador, personajes, packagings, botón de inicio,
+   dificultad, progreso guardado, despliegue) y revisando el resultado en
+   pantalla antes de seguir.
+3. **Pruebas:** la IA escribió pruebas automáticas con un navegador real
+   (Playwright) que recorren el juego completo: rutas protegidas, los 6
+   niveles, derrota por vidas y por tiempo, premios según el gusto, alacena,
+   zoom, progreso guardado y arrastre táctil. También comprobó miles de
+   tableros generados para asegurar que todas las palabras entran.
+4. **Revisión humana:** Martina probó el juego con otras personas y decidió
+   qué cambiar a partir de lo que dijeron; esos cambios son el punto anterior.
+5. **Contenido:** los datos educativos de cada palabra fueron redactados con
+   ayuda de la IA y revisados por Martina antes de la publicación.
+
+## Checklist de la entrega (Momento 3)
+
+- **Mecánicas y navegación completas con React Router:** rutas, protecciones
+  y 404.
+- **Diseño pulido:** glassmorphism, paleta de marca y animaciones suaves.
+- **Personalización narrativa:** mensajes propios de victoria y derrota,
+  nombre, gusto y personajes.
+- **Pruebas de usabilidad:** documentadas arriba, con sus ajustes.
+- **Despliegue:** Vercel (`vercel.json` incluido).
+- **Repositorio:** este README, estructura ordenada y sin archivos de más.

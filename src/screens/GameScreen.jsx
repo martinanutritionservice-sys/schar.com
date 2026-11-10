@@ -8,10 +8,13 @@ import FactOverlay from '../components/FactOverlay.jsx'
 import Personaje from '../components/Personaje.jsx'
 import Button from '../components/Button.jsx'
 import Header from '../components/Header.jsx'
+import Estrellas from '../components/Estrellas.jsx'
+import { elegirPalabras } from '../data/levels.js'
+import { mensajeDerrota, mensajeVictoria, elogioPalabra } from '../data/mensajes.js'
 import { sonidoAcierto, sonidoError, sonidoVictoria } from '../utils/sound.js'
 
-const VIDAS_INICIALES = 3
-const PISTAS_POR_NIVEL = 3
+const PUNTOS_POR_PALABRA = 100
+const PUNTOS_POR_VIDA = 20
 const DURACION_PISTA_MS = 4500
 
 // TODOS los niveles usan la MISMA grilla de 10 x 10, así el tablero se ve
@@ -25,8 +28,18 @@ function formatearTiempo(segundos) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVolver }) {
-  const listaPalabras = nivel.palabras.map((p) => p.palabra)
+// GameScreen solo guarda el "número de intento". Cada intento monta una
+// Partida nueva (key={intento}), que sortea palabras nuevas del banco del
+// nivel y arma un tablero nuevo: nunca se juega dos veces el mismo.
+export default function GameScreen(props) {
+  const [intento, setIntento] = useState(0)
+  return <Partida key={intento} {...props} onReintentar={() => setIntento((i) => i + 1)} />
+}
+
+function Partida({ nivel, nombreJugador, onNivelCompleto, onVolver, onReintentar }) {
+  // Se sortea UNA vez al montar la partida.
+  const [palabrasNivel] = useState(() => elegirPalabras(nivel))
+  const listaPalabras = palabrasNivel.map((p) => p.palabra)
   const tamañoGrilla = TAMAÑO_GRILLA
   const {
     grilla,
@@ -37,38 +50,19 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
     iniciarArrastre,
     continuarArrastre,
     finalizarArrastre,
-    reiniciar,
   } = useWordSearch(listaPalabras, tamañoGrilla, nivel.dificultad)
 
   // --- Estado propio de la pantalla de juego (useState + eventos) ---
   const [encontradas, setEncontradas] = useState([])
-  const [vidas, setVidas] = useState(VIDAS_INICIALES)
+  const [vidas, setVidas] = useState(nivel.vidas)
+  const [errores, setErrores] = useState(0)
   const [tiempoRestante, setTiempoRestante] = useState(nivel.tiempoSegundos)
-  const [palabraEnFoco, setPalabraEnFoco] = useState(null) // {palabra, dato}
+  const [palabraEnFoco, setPalabraEnFoco] = useState(null) // {palabra, dato, elogio}
   const [estadoNivel, setEstadoNivel] = useState('jugando') // jugando | ganado | perdido
   const [puntaje, setPuntaje] = useState(0)
   const [pausado, setPausado] = useState(false)
-  const [pistasRestantes, setPistasRestantes] = useState(PISTAS_POR_NIVEL)
+  const [pistasRestantes, setPistasRestantes] = useState(nivel.pistas)
   const [celdaPista, setCeldaPista] = useState(null)
-
-  // GameScreen se desmonta y se vuelve a montar cada vez que se elige un
-  // nivel nuevo (ver App.jsx), así que useWordSearch ya arranca con una
-  // grilla fresca para ese nivel gracias a su inicializador perezoso.
-  // Este efecto solo re-confirma el estado local por las dudas; llamar
-  // acá a reiniciar() generaría una SEGUNDA grilla distinta a la que ya
-  // se ve en pantalla, dejando una carrera entre lo que el jugador ve y
-  // lo que el hook termina validando.
-  useEffect(() => {
-    setEncontradas([])
-    setVidas(VIDAS_INICIALES)
-    setTiempoRestante(nivel.tiempoSegundos)
-    setPalabraEnFoco(null)
-    setEstadoNivel('jugando')
-    setPuntaje(0)
-    setPistasRestantes(PISTAS_POR_NIVEL)
-    setCeldaPista(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nivel.id])
 
   // Cronómetro: comportamiento dinámico que corre solo mientras se juega
   useEffect(() => {
@@ -105,11 +99,11 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
 
     finalizarArrastre(restantes, ({ acierto, palabra }) => {
       if (acierto) {
-        const info = nivel.palabras.find((p) => p.palabra === palabra)
+        const info = palabrasNivel.find((p) => p.palabra === palabra)
         const nuevasEncontradas = [...encontradas, palabra]
         setEncontradas(nuevasEncontradas)
-        setPuntaje((p) => p + 100)
-        setPalabraEnFoco({ palabra, dato: info?.dato ?? '' })
+        setPuntaje((p) => p + PUNTOS_POR_PALABRA)
+        setPalabraEnFoco({ palabra, dato: info?.dato ?? '', elogio: elogioPalabra() })
         if (nuevasEncontradas.length === listaPalabras.length) {
           sonidoVictoria()
         } else {
@@ -117,6 +111,7 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
         }
       } else {
         setVidas((v) => Math.max(0, v - 1))
+        setErrores((e) => e + 1)
         sonidoError()
       }
     })
@@ -129,7 +124,17 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
   const cerrarOverlay = () => {
     setPalabraEnFoco(null)
     if (encontradas.length === listaPalabras.length) {
-      onNivelCompleto(nivel.id, { puntaje: puntaje, tiempoUsado: nivel.tiempoSegundos - tiempoRestante })
+      // Bonus por vidas que te sobraron: premia jugar con cuidado.
+      const bonus = vidas * PUNTOS_POR_VIDA
+      const perfecta = errores === 0
+      onNivelCompleto(nivel, {
+        puntaje: puntaje + bonus,
+        bonus,
+        errores,
+        perfecta,
+        tiempoUsado: nivel.tiempoSegundos - tiempoRestante,
+        mensaje: mensajeVictoria(nombreJugador, perfecta),
+      })
     }
   }
 
@@ -147,35 +152,16 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
     window.setTimeout(() => setCeldaPista(null), DURACION_PISTA_MS)
   }
 
-  const reintentar = () => {
-    setEncontradas([])
-    setVidas(VIDAS_INICIALES)
-    setTiempoRestante(nivel.tiempoSegundos)
-    setEstadoNivel('jugando')
-    setPuntaje(0)
-    setPistasRestantes(PISTAS_POR_NIVEL)
-    setCeldaPista(null)
-    reiniciar()
-  }
-
   if (estadoNivel === 'perdido') {
     return (
-      <div className="screen screen--centrado">
-        <Personaje nombre="padre" tamaño="grande" />
-        <h1 className="section-title">¡Casi, {nombreJugador || 'CRACK'}!</h1>
-        <p>
-          {vidas === 0
-            ? 'Te quedaste sin vidas en este nivel.'
-            : 'Se acabó el tiempo para este nivel.'}
-        </p>
-        <p className="game-over__detalle">
-          Encontraste {encontradas.length} de {listaPalabras.length} palabras.
-        </p>
-        <Button onClick={reintentar}>REINTENTAR</Button>
-        <Button variant="ghost" onClick={onVolver}>
-          VOLVER A NIVELES
-        </Button>
-      </div>
+      <PantallaDerrota
+        nombreJugador={nombreJugador}
+        motivo={vidas === 0 ? 'vidas' : 'tiempo'}
+        encontradas={encontradas.length}
+        total={listaPalabras.length}
+        onReintentar={onReintentar}
+        onVolver={onVolver}
+      />
     )
   }
 
@@ -199,7 +185,7 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
             <span className={`game-timer${tiempoUrgente ? ' game-timer--urgente' : ''}`}>
               {formatearTiempo(tiempoRestante)}
             </span>
-            <LivesIndicator vidas={vidas} />
+            <LivesIndicator vidas={vidas} vidasMax={nivel.vidas} />
           </>
         }
       />
@@ -216,6 +202,9 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
         <br />
         <span>{nivel.titulo}</span>
       </h2>
+      <p className="game__dificultad">
+        <Estrellas cantidad={nivel.estrellas} /> {nivel.etiqueta}
+      </p>
 
       {pausado ? (
         <div className="screen--centrado">
@@ -237,7 +226,7 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
 
           <div className="game__lista-wrapper">
             <p className="game__lista-titulo">Palabras a encontrar</p>
-            <WordList palabras={nivel.palabras} encontradas={encontradas} />
+            <WordList palabras={palabrasNivel} encontradas={encontradas} />
           </div>
 
           <p className="game__progreso-texto">
@@ -251,14 +240,34 @@ export default function GameScreen({ nivel, nombreJugador, onNivelCompleto, onVo
             onClick={usarPista}
             disabled={pistasRestantes === 0}
           >
-            💡 PISTA ({pistasRestantes})
+            💡 {nivel.pistas === 0 ? 'SIN PISTAS' : `PISTA (${pistasRestantes})`}
           </button>
         </>
       )}
 
       {palabraEnFoco && (
-        <FactOverlay palabra={palabraEnFoco.palabra} dato={palabraEnFoco.dato} nivelId={nivel.id} onContinuar={cerrarOverlay} />
+        <FactOverlay titulo={palabraEnFoco.elogio} palabra={palabraEnFoco.palabra} dato={palabraEnFoco.dato} nivelId={nivel.id} onContinuar={cerrarOverlay} />
       )}
+    </div>
+  )
+}
+
+// Pantalla de derrota: mensaje distinto según el motivo (sin vidas o sin
+// tiempo) y sorteado al azar, con el nombre de la persona.
+function PantallaDerrota({ nombreJugador, motivo, encontradas, total, onReintentar, onVolver }) {
+  const [mensaje] = useState(() => mensajeDerrota(nombreJugador, motivo))
+  return (
+    <div className="screen screen--centrado">
+      <Personaje nombre="padre" tamaño="grande" />
+      <h1 className="section-title">{motivo === 'vidas' ? '¡Sin vidas!' : '¡Se acabó el tiempo!'}</h1>
+      <p>{mensaje}</p>
+      <p className="game-over__detalle">
+        Encontraste {encontradas} de {total} palabras.
+      </p>
+      <Button onClick={onReintentar}>REINTENTAR CON PALABRAS NUEVAS</Button>
+      <Button variant="ghost" onClick={onVolver}>
+        VOLVER A NIVELES
+      </Button>
     </div>
   )
 }
